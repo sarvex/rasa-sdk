@@ -884,6 +884,7 @@ def test_extract_other_slots_with_entity(
 
 async def test_validate():
     # noinspection PyAbstractClass
+
     class CustomFormAction(FormAction):
         def name(self):
             return "some_form"
@@ -912,12 +913,15 @@ async def test_validate():
 
     events = await form.validate(CollectingDispatcher(), tracker, {})
     # check that validation succeed
-    assert events == [
-        SlotSet("some_other_slot", "some_other_value"),
-        SlotSet("some_slot", "some_value"),
-    ] or events == [
-        SlotSet("some_slot", "some_value"),
-        SlotSet("some_other_slot", "some_other_value"),
+    assert events in [
+        [
+            SlotSet("some_other_slot", "some_other_value"),
+            SlotSet("some_slot", "some_value"),
+        ],
+        [
+            SlotSet("some_slot", "some_value"),
+            SlotSet("some_other_slot", "some_other_value"),
+        ],
     ]
 
     tracker = Tracker(
@@ -957,6 +961,7 @@ async def test_validate():
 
 async def test_set_slot_within_helper():
     # noinspection PyAbstractClass
+
     class CustomFormAction(FormAction):
         def name(self):
             return "some_form"
@@ -988,12 +993,15 @@ async def test_set_slot_within_helper():
     events = await form.validate(CollectingDispatcher(), tracker, {})
 
     # check that some_slot gets validated correctly
-    assert events == [
-        SlotSet("some_other_slot", "other_value"),
-        SlotSet("some_slot", "validated_value"),
-    ] or events == [
-        SlotSet("some_slot", "validated_value"),
-        SlotSet("some_other_slot", "other_value"),
+    assert events in [
+        [
+            SlotSet("some_other_slot", "other_value"),
+            SlotSet("some_slot", "validated_value"),
+        ],
+        [
+            SlotSet("some_slot", "validated_value"),
+            SlotSet("some_other_slot", "other_value"),
+        ],
     ]
 
 
@@ -1229,6 +1237,7 @@ async def test_activate_if_required():
 
 async def test_validate_if_required():
     # noinspection PyAbstractClass
+
     class CustomFormAction(FormAction):
         def name(self):
             return "some_form"
@@ -1257,12 +1266,15 @@ async def test_validate_if_required():
 
     events = await form._validate_if_required(CollectingDispatcher(), tracker, {})
     # check that validation was performed
-    assert events == [
-        SlotSet("some_other_slot", "some_other_value"),
-        SlotSet("some_slot", "some_value"),
-    ] or events == [
-        SlotSet("some_slot", "some_value"),
-        SlotSet("some_other_slot", "some_other_value"),
+    assert events in [
+        [
+            SlotSet("some_other_slot", "some_other_value"),
+            SlotSet("some_slot", "some_value"),
+        ],
+        [
+            SlotSet("some_slot", "some_value"),
+            SlotSet("some_other_slot", "some_other_value"),
+        ],
     ]
 
     tracker = Tracker(

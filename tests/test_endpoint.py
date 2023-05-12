@@ -64,9 +64,7 @@ def test_arg_parser_actions_params_folder_style():
 
     with pytest.raises(BaseException) as e:
         parser.parse_args(args)
-    if e is not None:
-        assert True
-    else:
+    if e is None:
         assert False
 
 

@@ -40,17 +40,10 @@ def get_object_name(
     if mention:
         return resolve_mention(tracker, ordinal_mention_mapping)
 
-    # check whether the user referred to the objet by its name
-    object_name = tracker.get_slot(object_type)
-    if object_name:
+    if object_name := tracker.get_slot(object_type):
         return object_name
 
-    if use_last_object_mention:
-        # if no explicit mention was found, we assume the user just refers to the last
-        # object mentioned in the conversation
-        return tracker.get_slot(SLOT_LAST_OBJECT)
-
-    return None
+    return tracker.get_slot(SLOT_LAST_OBJECT) if use_last_object_mention else None
 
 
 def resolve_mention(
@@ -93,10 +86,7 @@ def resolve_mention(
     # for now we just assume that if the user refers to an object, for
     # example via "it" or "that restaurant", they are actually referring to the last
     # object that was detected.
-    if current_object_type == last_object_type:
-        return last_object
-
-    return None
+    return last_object if current_object_type == last_object_type else None
 
 
 def get_attribute_slots(

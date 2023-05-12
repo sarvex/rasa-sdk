@@ -104,9 +104,8 @@ class Tracker:
 
         if key in self.slots:
             return self.slots[key]
-        else:
-            logger.info(f"Tried to access non existent slot '{key}'.")
-            return None
+        logger.info(f"Tried to access non existent slot '{key}'.")
+        return None
 
     def get_latest_entity_values(
         self,
@@ -142,10 +141,14 @@ class Tracker:
     def get_latest_input_channel(self) -> Optional[Text]:
         """Get the name of the input_channel of the latest UserUttered event"""
 
-        for e in reversed(self.events):
-            if e.get("event") == "user":
-                return e.get("input_channel")
-        return None
+        return next(
+            (
+                e.get("input_channel")
+                for e in reversed(self.events)
+                if e.get("event") == "user"
+            ),
+            None,
+        )
 
     def is_paused(self) -> bool:
         """State whether the tracker is currently paused."""
@@ -247,7 +250,6 @@ class Tracker:
             A mapping of extracted slot candidates and their values.
         """
 
-        slots: Dict[Text, Any] = {}
         count: int = 0
 
         for event in reversed(self.events):
@@ -260,9 +262,10 @@ class Tracker:
                 # checked all potential slot candidates.
                 break
 
-        for event in self.events[len(self.events) - count :]:
-            slots[event["name"]] = event["value"]
-
+        slots: Dict[Text, Any] = {
+            event["name"]: event["value"]
+            for event in self.events[len(self.events) - count :]
+        }
         return slots
 
     def add_slots(self, slots: List[EventType]) -> None:
@@ -272,7 +275,7 @@ class Tracker:
             slots: `SlotSet` events.
         """
         for event in slots:
-            if not event.get("event") == "slot":
+            if event.get("event") != "slot":
                 continue
             self.slots[event["name"]] = event["value"]
             self.events.append(event)
@@ -302,10 +305,7 @@ class Tracker:
             highest_ranking_intent["name"] == NLU_FALLBACK_INTENT_NAME
             and skip_fallback_intent
         ):
-            if len(intent_ranking) >= 2:
-                return intent_ranking[1]["name"]
-            else:
-                return None
+            return intent_ranking[1]["name"] if len(intent_ranking) >= 2 else None
         else:
             return highest_ranking_intent["name"]
 

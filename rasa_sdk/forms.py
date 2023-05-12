@@ -262,17 +262,14 @@ class FormAction(Action):
         Returns:
             Value of entity.
         """
-        # list is used to cover the case of list slot type
-        values = list(
-            tracker.get_latest_entity_values(name, entity_group=group, entity_role=role)
-        )
-        if not values:
+        if values := list(
+            tracker.get_latest_entity_values(
+                name, entity_group=group, entity_role=role
+            )
+        ):
+            return values[0] if len(values) == 1 else values
+        else:
             return None
-
-        if len(values) == 1:
-            return values[0]
-
-        return values
 
     # noinspection PyUnusedLocal
     def extract_other_slots(
@@ -373,11 +370,11 @@ class FormAction(Action):
                     )
                 elif mapping_type == "from_intent":
                     value = requested_slot_mapping.get("value")
+                elif mapping_type == "from_text":
+                    value = tracker.latest_message.get("text")
                 elif mapping_type == "from_trigger_intent":
                     # from_trigger_intent is only used on form activation
                     continue
-                elif mapping_type == "from_text":
-                    value = tracker.latest_message.get("text")
                 else:
                     raise ValueError("Provided slot mapping type is not supported")
 
@@ -415,7 +412,7 @@ class FormAction(Action):
                     + "a dict of {'slot_name': value} instead."
                 )
                 validation_output = {slot: validation_output}
-            slot_dict.update(validation_output)
+            slot_dict |= validation_output
 
         # validation succeed, set slots to extracted values
         return [SlotSet(slot, value) for slot, value in slot_dict.items()]
@@ -436,9 +433,7 @@ class FormAction(Action):
         # but set by corresponding entity or trigger intent mapping
         slot_values = self.extract_other_slots(dispatcher, tracker, domain)
 
-        # extract requested slot
-        slot_to_fill = tracker.get_slot(REQUESTED_SLOT)
-        if slot_to_fill:
+        if slot_to_fill := tracker.get_slot(REQUESTED_SLOT):
             slot_values.update(
                 self.extract_requested_slot(dispatcher, tracker, slot_to_fill, domain)
             )
@@ -550,28 +545,24 @@ class FormAction(Action):
 
         if tracker.active_loop.get("name") == self.name():
             return []
-        else:
-            logger.debug(f"Activated the form '{self.name()}'")
-            events = [ActiveLoop(self.name())]
+        logger.debug(f"Activated the form '{self.name()}'")
+        events = [ActiveLoop(self.name())]
 
-            # collect values of required slots filled before activation
-            prefilled_slots = {}
-
-            for slot_name in self.required_slots(tracker):
-                if not self._should_request_slot(tracker, slot_name):
-                    prefilled_slots[slot_name] = tracker.get_slot(slot_name)
-
-            if prefilled_slots:
-                logger.debug(f"Validating pre-filled required slots: {prefilled_slots}")
-                events.extend(
-                    await self.validate_slots(
-                        prefilled_slots, dispatcher, tracker, domain
-                    )
+        if prefilled_slots := {
+            slot_name: tracker.get_slot(slot_name)
+            for slot_name in self.required_slots(tracker)
+            if not self._should_request_slot(tracker, slot_name)
+        }:
+            logger.debug(f"Validating pre-filled required slots: {prefilled_slots}")
+            events.extend(
+                await self.validate_slots(
+                    prefilled_slots, dispatcher, tracker, domain
                 )
-            else:
-                logger.debug("No pre-filled required slots to validate.")
+            )
+        else:
+            logger.debug("No pre-filled required slots to validate.")
 
-            return events
+        return events
 
     async def _validate_if_required(
         self,
@@ -671,11 +662,14 @@ class FormAction(Action):
 
         entity_type = mappings[0].get("entity")
 
-        for i in range(1, len(mappings)):
-            if entity_type != mappings[i].get("entity"):
-                return None
-
-        return entity_type
+        return next(
+            (
+                None
+                for i in range(1, len(mappings))
+                if entity_type != mappings[i].get("entity")
+            ),
+            entity_type,
+        )
 
 
 class FormValidationAction(Action, ABC):
@@ -739,7 +733,7 @@ class FormValidationAction(Action, ABC):
             extraction_output = await self._extract_slot(
                 slot_name, dispatcher, tracker, domain
             )
-            custom_slots.update(extraction_output)
+            custom_slots |= extraction_output
             # for sequential consistency, also update tracker
             # to make changes visible to subsequent extract_{slot_name}
             tracker.slots.update(extraction_output)
@@ -765,7 +759,7 @@ class FormValidationAction(Action, ABC):
                 )
             return {}
 
-        if extract_method and slot_mapped_in_domain:
+        if slot_mapped_in_domain:
             warnings.warn(
                 f"Slot '{slot_name}' is mapped in the domain and your custom "
                 f"action defines '{method_name}'. '{method_name}' will override any "
@@ -866,7 +860,7 @@ class FormValidationAction(Action, ABC):
             )
 
             if isinstance(validation_output, dict):
-                slots.update(validation_output)
+                slots |= validation_output
                 # for sequential consistency, also update tracker
                 # to make changes visible to subsequent validate_{slot_name}
                 tracker.slots.update(validation_output)

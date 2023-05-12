@@ -133,15 +133,13 @@ class ActionQueryKnowledgeBase(Action):
             dispatcher.utter_message(response="utter_ask_rephrase")
             return []
 
-        if not attribute or new_request:
-            return await self._query_objects(dispatcher, object_type, tracker)
-        elif attribute:
-            return await self._query_attribute(
+        return (
+            await self._query_objects(dispatcher, object_type, tracker)
+            if not attribute or new_request
+            else await self._query_attribute(
                 dispatcher, object_type, attribute, tracker
             )
-
-        dispatcher.utter_message(response="utter_ask_rephrase")
-        return []
+        )
 
     async def _query_objects(
         self, dispatcher: CollectingDispatcher, object_type: Text, tracker: Tracker
@@ -251,12 +249,10 @@ class ActionQueryKnowledgeBase(Action):
             )
         )
 
-        slots = [
+        return [
             SlotSet(SLOT_OBJECT_TYPE, object_type),
             SlotSet(SLOT_ATTRIBUTE, None),
             SlotSet(SLOT_MENTION, None),
             SlotSet(SLOT_LAST_OBJECT, object_identifier),
             SlotSet(SLOT_LAST_OBJECT_TYPE, object_type),
         ]
-
-        return slots

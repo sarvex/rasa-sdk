@@ -56,9 +56,7 @@ class CollectingDispatcher:
             "response": response,
             "image": image,
             "attachment": attachment,
-        }
-        message.update(kwargs)
-
+        } | kwargs
         self.messages.append(message)
 
     # deprecated
@@ -221,7 +219,7 @@ class ActionExecutor:
             return
 
         for loader, name, is_pkg in pkgutil.walk_packages(package.__path__):  # type: ignore  # mypy issue #1422
-            full_name = package.__name__ + "." + name
+            full_name = f"{package.__name__}.{name}"
             self._import_module(full_name)
 
             if recursive and is_pkg:
@@ -238,8 +236,7 @@ class ActionExecutor:
         """
         module = importlib.import_module(name)
 
-        module_file = getattr(module, "__file__", None)
-        if module_file:
+        if module_file := getattr(module, "__file__", None):
             # If the module we're importing is a namespace package (a package
             # without __init__.py), then there's nothing to watch for the
             # package itself.
@@ -382,8 +379,7 @@ class ActionExecutor:
     async def run(self, action_call: "ActionCall") -> Optional[Dict[Text, Any]]:
         from rasa_sdk.interfaces import Tracker
 
-        action_name = action_call.get("next_action")
-        if action_name:
+        if action_name := action_call.get("next_action"):
             logger.debug(f"Received request to run '{action_name}'")
             action = self.actions.get(action_name)
             if not action:

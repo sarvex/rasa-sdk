@@ -7,7 +7,7 @@ from rasa_sdk.types import DomainDict
 
 
 class CustomAsyncAction(Action):
-    def name(cls) -> Text:
+    def name(self) -> Text:
         return "custom_async_action"
 
     async def run(
@@ -20,7 +20,7 @@ class CustomAsyncAction(Action):
 
 
 class CustomAction(Action):
-    def name(cls) -> Text:
+    def name(self) -> Text:
         return "custom_action"
 
     def run(
